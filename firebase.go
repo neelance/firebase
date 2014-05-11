@@ -43,7 +43,12 @@ func (ref *Ref) url() string {
 }
 
 func (ref *Ref) Get(v interface{}) error {
-	resp, err := http.Get(ref.url())
+	req, err := http.NewRequest("GET", ref.url(), nil)
+	if err != nil {
+		return err
+	}
+	req.Close = true
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -80,6 +85,7 @@ func (ref *Ref) request(method string, v interface{}) error {
 	if err != nil {
 		return err
 	}
+	req.Close = true
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

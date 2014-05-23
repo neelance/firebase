@@ -106,15 +106,20 @@ func (w *Watch) WaitForChange() error {
 	if w.bufferedChange != nil {
 		return nil
 	}
-	e, ok := <-w.client.Stream
-	if !ok {
-		if w.client.Err != nil {
-			return w.client.Err
+	for {
+		e, ok := <-w.client.Stream
+		if !ok {
+			if w.client.Err != nil {
+				return w.client.Err
+			}
+			return io.EOF
 		}
-		return io.EOF
+		if e.Type == "keep-alive" {
+			continue
+		}
+		w.bufferedChange = &e
+		return nil
 	}
-	w.bufferedChange = &e
-	return nil
 }
 
 func (w *Watch) ApplyChanges(v interface{}) error {

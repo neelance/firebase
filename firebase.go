@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 )
 
 type Ref struct {
@@ -107,18 +108,22 @@ func (w *Watch) WaitForChange() error {
 		return nil
 	}
 	for {
-		e, ok := <-w.client.Stream
-		if !ok {
-			if w.client.Err != nil {
-				return w.client.Err
+		select {
+		case e, ok := <-w.client.Stream:
+			if !ok {
+				if w.client.Err != nil {
+					return w.client.Err
+				}
+				return io.EOF
 			}
-			return io.EOF
+			if e.Type == "keep-alive" {
+				continue
+			}
+			w.bufferedChange = &e
+			return nil
+		case <-time.After(40 * time.Second): // Firebase sends a keep-alive event every 30 seconds
+			return fmt.Errorf("timeout, no keep-alive received after 40 seconds")
 		}
-		if e.Type == "keep-alive" {
-			continue
-		}
-		w.bufferedChange = &e
-		return nil
 	}
 }
 

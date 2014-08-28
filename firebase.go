@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/neelance/eventsource/client"
 	"io"
 	"net/http"
 	"path"
@@ -12,10 +11,13 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/neelance/eventsource/client"
 )
 
 type Ref struct {
 	App   string
+	Auth  string
 	Path  string
 	cache interface{}
 }
@@ -25,9 +27,10 @@ type Watch struct {
 	bufferedChange *client.Event
 }
 
-func New(app string) *Ref {
+func New(app, auth string) *Ref {
 	return &Ref{
 		App:  app,
+		Auth: auth,
 		Path: "",
 	}
 }
@@ -35,12 +38,13 @@ func New(app string) *Ref {
 func (ref *Ref) Child(key string) *Ref {
 	return &Ref{
 		App:  ref.App,
+		Auth: ref.Auth,
 		Path: path.Join(ref.Path, key),
 	}
 }
 
 func (ref *Ref) url() string {
-	return fmt.Sprintf("https://%s.firebaseio.com/%s.json", ref.App, ref.Path)
+	return fmt.Sprintf("https://%s.firebaseio.com/%s.json?auth=%s", ref.App, ref.Path, ref.Auth)
 }
 
 func (ref *Ref) Get(v interface{}) error {

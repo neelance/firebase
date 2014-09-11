@@ -48,39 +48,29 @@ func (ref *Ref) url() string {
 }
 
 func (ref *Ref) Get(v interface{}) error {
-	req, err := http.NewRequest("GET", ref.url(), nil)
-	if err != nil {
-		return err
-	}
-	req.Close = true
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return json.NewDecoder(resp.Body).Decode(v)
+	return ref.request("GET", nil, v)
 }
 
 func (ref *Ref) Put(v interface{}) error {
-	return ref.request("PUT", v)
+	return ref.request("PUT", v, nil)
 }
 
 func (ref *Ref) Post(v interface{}) error {
-	return ref.request("POST", v)
+	return ref.request("POST", v, nil)
 }
 
 func (ref *Ref) Patch(v interface{}) error {
-	return ref.request("PATCH", v)
+	return ref.request("PATCH", v, nil)
 }
 
 func (ref *Ref) Delete() error {
-	return ref.request("DELETE", nil)
+	return ref.request("DELETE", nil, nil)
 }
 
-func (ref *Ref) request(method string, v interface{}) error {
+func (ref *Ref) request(method string, encV, decV interface{}) error {
 	var body io.Reader
-	if v != nil {
-		data, err := json.Marshal(v)
+	if encV != nil {
+		data, err := json.Marshal(encV)
 		if err != nil {
 			return err
 		}
@@ -95,7 +85,17 @@ func (ref *Ref) request(method string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var errInfo struct {
+			Error string
+		}
+		json.NewDecoder(resp.Body).Decode(&errInfo)
+		return fmt.Errorf("Firebase error: %s", errInfo.Error)
+	}
+	if decV != nil {
+		return json.NewDecoder(resp.Body).Decode(decV)
+	}
 	return nil
 }
 
